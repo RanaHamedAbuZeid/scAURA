@@ -525,6 +525,55 @@ def compute_gc(seq):
 
 
 # ============================================================================
+# STEP 7: CREATE MOTIF-PEAK MATRIX  (vectorized)
+# ============================================================================
+
+def step7_create_motif_matrix(peaks_df, jaspar_result, fimo_result):
+    step_name = "step7_matrix"
+    if checkpoint_mgr.exists(step_name):
+        return checkpoint_mgr.load(step_name)
+
+    logger.info("=" * 80)
+    logger.info("STEP 7: CREATING MOTIF-PEAK MATRIX")
+    logger.info("=" * 80)
+
+    fimo_df   = pd.read_csv(RESULTS_DIR / "moods_matches_all.csv")
+    motifs_df = jaspar_result['motifs_df']
+
+    peak_to_idx  = {name: idx for idx, name in enumerate(peaks_df['name'])}
+    motif_to_idx = {mid:  idx for idx, mid  in enumerate(motifs_df['motif_id'])}
+
+    n_peaks  = len(peaks_df)
+    n_motifs = len(motifs_df)
+    logger.info(f"Matrix: {n_motifs} motifs × {n_peaks} peaks")
+
+    fimo_df['peak_idx']  = fimo_df['sequence_name'].map(peak_to_idx)
+    fimo_df['motif_idx'] = fimo_df['motif_id'].map(motif_to_idx)
+    fimo_df = fimo_df.dropna(subset=['peak_idx', 'motif_idx'])
+
+    rows = fimo_df['motif_idx'].astype(int).values
+    cols = fimo_df['peak_idx'].astype(int).values
+    data = np.ones(len(rows), dtype=np.float32)
+
+    motif_matrix = sparse.csr_matrix(
+        (data, (rows, cols)),
+        shape=(n_motifs, n_peaks),
+        dtype=np.float32
+    )
+
+    motif_freq = np.array(motif_matrix.sum(axis=1)).flatten()
+    logger.info(f"✅ nnz: {motif_matrix.nnz:,}  avg peaks/motif: {motif_freq.mean():.1f}")
+
+    result = {
+        'motif_matrix': motif_matrix,
+        'motif_freq':   motif_freq,
+        'peak_to_idx':  peak_to_idx,
+        'motif_to_idx': motif_to_idx
+    }
+    checkpoint_mgr.save(step_name, result)
+    return result
+
+# ============================================================================
 # STEP: SAVE RESULTS
 # ============================================================================
 
@@ -620,6 +669,8 @@ def main():
     else:
         # ── Default: run everything in one shot (24-hour job) ─────────────
         fimo_result = step6_run_full(sequences_result, jaspar_result)
+
+    motif_matrix    = step7_create_motif_matrix(peaks_df, jaspar_result, fimo_result)
 
     return 0
 
