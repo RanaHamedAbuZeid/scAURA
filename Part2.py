@@ -1,49 +1,5 @@
 #!/usr/bin/env python3
-"""
-═══════════════════════════════════════════════════════════════════════════
-CHROMVAR PIPELINE — COMPLETE & PAPER-ACCURATE
-═══════════════════════════════════════════════════════════════════════════
 
-Reference implementation of chromVAR (Schep et al., Nat Methods 2017)
-translated from the R source code at:
-  https://github.com/GreenleafLab/chromVAR/blob/master/R/compute_deviations.R
-  https://github.com/GreenleafLab/chromVAR/blob/master/R/background_peaks.R
-
-Inputs (from existing checkpoints — outputs of Steps 1-7):
-  • step1_data.pkl       — AnnData: (n_cells, n_peaks) fragment counts
-  • step4_sequences.pkl  — peaks_df with DNA sequences
-  • step5_jaspar.pkl     — motifs_df (879 JASPAR motifs)
-  • step7_matrix.pkl     — motif_matrix: (n_motifs, n_peaks) binary
-
-Outputs (for downstream DNN model):
-  • filtered_counts.npz           — final sparse counts matrix used
-  • cell_ids_kept.npy             — cell IDs after filtering
-  • peak_ids_kept.npy             — peak names after filtering
-  • motif_matrix_filtered.npz     — motif × peak (after peak filtering)
-  • peak_gc_filtered.npy          — GC content per kept peak
-  • peak_depth_filtered.npy       — total fragments per kept peak
-  • cell_depth.npy                — total fragments per kept cell
-  • expectation.npy               — peak_total / total_counts (chromVAR expectation)
-  • bias_bins.npz                 — Mahalanobis bins + centers
-  • background_peaks.npy          — (n_peaks, n_iter) bg peak indices
-  • chromvar_deviations.npy       — (n_cells, n_motifs_tested) float32
-  • chromvar_zscores.npy          — (n_cells, n_motifs_tested) float32
-  • motif_ids_tested.npy          — motif IDs corresponding to columns
-  • variability.csv               — motif_id, name, variability, kept_for_dnn
-  • X_dnn.npy                     — (n_cells, n_variable_motifs) — DNN input
-  • X_dnn.csv                     — same, with cell and motif IDs
-  • pipeline_summary.txt          — full human-readable log
-
-CLI:
-    python chromvar_pipeline.py                          # run full pipeline
-    python chromvar_pipeline.py --stage 4                # resume from a stage
-    python chromvar_pipeline.py --n-iter 50              # bg iterations (paper default)
-    python chromvar_pipeline.py --min-depth 1500         # min fragments per cell
-    python chromvar_pipeline.py --variability-cutoff 1.5 # for DNN input
-
-SLURM submission:
-    sbatch run_chromvar_pipeline.slurm
-"""
 
 # ───────────────────────────────────────────────────────────────────────────
 # CUDA_VISIBLE_DEVICES fix (MUST come before torch import)
@@ -141,7 +97,6 @@ def stage0_load_inputs():
     n_cells, n_peaks = counts.shape
     n_motifs = motif_matrix.shape[0]
 
-    # Sanity
     assert motif_matrix.shape[1] == n_peaks, "motif_matrix peak count mismatch"
     assert len(peaks_df) == n_peaks, "peaks_df length mismatch"
     assert len(motifs_df) == n_motifs, "motifs_df length mismatch"
@@ -187,8 +142,6 @@ def stage0_load_inputs():
 # ═══════════════════════════════════════════════════════════════════════════
 # STAGE 1 — FILTER CELLS (filterSamples equivalent)
 # ═══════════════════════════════════════════════════════════════════════════
-# chromVAR filterSamples: min_depth (default 500 or 10% median), min_in_peaks
-# We only have fragments in peaks, so we apply min_depth directly to that.
 
 def stage1_filter_cells(data, min_depth=1500):
     banner(f"STAGE 1 — FILTER CELLS (min_depth = {min_depth})")
@@ -220,8 +173,6 @@ def stage1_filter_cells(data, min_depth=1500):
 # ═══════════════════════════════════════════════════════════════════════════
 # STAGE 2 — FILTER PEAKS (filterPeaks equivalent)
 # ═══════════════════════════════════════════════════════════════════════════
-# chromVAR requires "all peaks must have at least one fragment in one sample"
-# We also drop peaks with pathological GC (sequence extraction failed).
 
 def stage2_filter_peaks(data, min_fragments=1):
     banner(f"STAGE 2 — FILTER PEAKS (min_fragments ≥ {min_fragments}, valid GC)")
@@ -260,9 +211,6 @@ def stage2_filter_peaks(data, min_fragments=1):
 # ═══════════════════════════════════════════════════════════════════════════
 # STAGE 3 — COMPUTE EXPECTATION (computeExpectations equivalent)
 # ═══════════════════════════════════════════════════════════════════════════
-# R code (compute_expectations_core):
-#   expectation <- getFragmentsPerPeak(object) / getTotalFragments(object)
-# → expectation[j] = peak_total[j] / total_counts  (a probability over peaks)
 
 def stage3_compute_expectation(data):
     banner("STAGE 3 — COMPUTE EXPECTATION")
@@ -285,11 +233,6 @@ def stage3_compute_expectation(data):
 # ═══════════════════════════════════════════════════════════════════════════
 # STAGE 4 — BUILD MAHALANOBIS BIAS BINS
 # ═══════════════════════════════════════════════════════════════════════════
-# R getBackgroundPeaks (background_peaks.R):
-#   - bias_df = (GC, log10(depth+1))    — R uses log10
-#   - Mahalanobis transform (decorrelate)
-#   - bin into bs × bs grid (bs=50 default)
-#   - w=0.1 default (Gaussian kernel sigma for similarity)
 
 def stage4_build_bias_bins(data, n_bins=50, w=0.1):
     banner(f"STAGE 4 — BUILD BIAS BINS ({n_bins}×{n_bins}, w={w})")
@@ -349,12 +292,6 @@ def stage4_build_bias_bins(data, n_bins=50, w=0.1):
 # ═══════════════════════════════════════════════════════════════════════════
 # STAGE 5 — SAMPLE BACKGROUND PEAKS (getBackgroundPeaks equivalent)
 # ═══════════════════════════════════════════════════════════════════════════
-# R does this on CPU. For our 187K peaks × 50 iterations, doing it once
-# upfront and saving is cleanest (matches R exactly — one background_peaks
-# matrix reused across all motifs).
-#
-# Output: background_peaks[p, b] = index of a background peak for peak p
-#   in iteration b. Shape (n_peaks, n_iter).
 
 def stage5_sample_background_peaks(data, n_iter=50, device='cuda'):
     banner(f"STAGE 5 — SAMPLE BACKGROUND PEAKS (n_iter={n_iter})")
@@ -435,37 +372,9 @@ def stage5_sample_background_peaks(data, n_iter=50, device='cuda'):
 # ═══════════════════════════════════════════════════════════════════════════
 # STAGE 6 — COMPUTE DEVIATIONS (compute_deviations_single equivalent)
 # ═══════════════════════════════════════════════════════════════════════════
-# EXACT R FORMULA (from compute_deviations_single, lines ~440-470):
-#
-#   tf_vec        : (1, n_peaks) sparse, 1 where peak ∈ motif set
-#   observed      : (n_cells,)  = tf_vec @ counts  (sum across motif peaks)
-#   expected      : (n_cells,)  = (tf_vec @ expectation) * fragments_per_sample
-#                                  i.e. (sum_over_peaks_in_set of expectation[p])
-#                                       × cell_depth[i]
-#   observed_deviation = (observed - expected) / expected       ← PER-CELL !!
-#
-#   sample_mat    : (n_iter, n_peaks) sparse, 1 for each bg set
-#   sampled           : (n_iter, n_cells) = sample_mat @ counts
-#   sampled_expected  : (n_iter, n_cells) = (sample_mat @ expectation) * cell_depth[:, None]
-#   sampled_deviation = (sampled - sampled_expected) / sampled_expected    ← PER-CELL !!
-#
-#   normdev = observed_deviation - colMeans(sampled_deviation)
-#   z       = normdev / colStds(sampled_deviation)
-#
-# Also: threshold filter — if expected[i] < 1, z[i] and dev[i] := NaN
 
 def stage6_compute_deviations(data, min_peaks=5, device='cuda'):
     banner("STAGE 6 — COMPUTE DEVIATIONS (paper-exact, hybrid CPU-sparse + GPU-dense)")
-
-    # Strategy:
-    #   - Keep counts as scipy.sparse CSC on CPU (fast column slicing)
-    #   - For each motif: slice columns (motif peaks + bg peaks) → dense on CPU
-    #   - Ship the small dense block (n_cells, m + m*n_iter) to GPU for arithmetic
-    #   - This avoids torch.sparse.mm on GPU (unreliable on Blackwell/RTX5070)
-    #
-    # Memory per motif: m columns + m*n_iter bg columns, each n_cells floats
-    #   worst case: m=20000, n_iter=50 → 20000*50*39349*4 bytes = 157 GB ✗
-    #   so we batch bg iterations if m is large.
 
     dev = torch.device(device if torch.cuda.is_available() else 'cpu')
     log.info(f"  arithmetic on: {dev}")
@@ -502,7 +411,6 @@ def stage6_compute_deviations(data, min_peaks=5, device='cuda'):
         f"GPU arithmetic broken: {_test} vs {_expected}"
     log.info(f"    ✓ basic GPU ops work")
 
-    # ── Output arrays ──
     deviations = np.full((n_cells, n_motifs), np.nan, dtype=np.float32)
     z_scores   = np.full((n_cells, n_motifs), np.nan, dtype=np.float32)
     skipped = []
@@ -512,15 +420,7 @@ def stage6_compute_deviations(data, min_peaks=5, device='cuda'):
     t0 = time.time()
     motif_matrix_csr = motif_matrix.tocsr()
 
-    # Helper: column-sum a set of columns from counts_csc → returns numpy (n_cells,)
-    # scipy gives fast column slicing + sum; this is the key speed-up.
     def sum_columns(col_indices):
-        """
-        Efficiently compute sum across the given peak columns of counts_csc.
-        Returns (n_cells,) float32 numpy array.
-        """
-        # counts_csc[:, col_indices] — CSC slicing is fast
-        # .sum(axis=1) returns a (n_cells, 1) matrix; flatten + cast
         return np.asarray(
             counts_csc[:, col_indices].sum(axis=1)
         ).flatten().astype(np.float32)
@@ -544,25 +444,10 @@ def stage6_compute_deviations(data, min_peaks=5, device='cuda'):
         ].sum()
         expected = sum_exp_k * cell_depth_t                       # (n_cells,)
 
-        # observed_deviation = (obs - exp) / exp (per cell)
         obs_dev = (observed - expected) / expected.clamp(min=1e-10)
 
-        # ── Background: for each of n_iter iterations, compute sampled deviation ──
-        # We need: sampled[i, b] = sum over q∈peak_set of counts[i, bg_peaks[q, b]]
-        # This is equivalent to summing over bg_peaks[peak_set, b]
-        # → for each b, a subset of bg peak indices of size m (possibly with dupes)
-
         bg_for_motif = bg_peaks[peak_set_np, :]                   # (m, n_iter) int64
-        # Unique peaks that need slicing
-        # For efficiency, process all n_iter at once:
-        # Build a sparse matrix S of shape (n_iter, n_peaks) where
-        #   S[b, p] = count of p in bg_for_motif[:, b]
-        # Then sampled = S @ counts_csc.T → (n_iter, n_cells)
-        # But that's another sparse matmul — slow on CPU for large m×n_iter.
-        #
-        # Faster: for each b, sum_columns(bg_for_motif[:, b])
-        # That's n_iter scipy slicing ops. With m ~ 1000-2000 and n_iter=50,
-        # this is 50 small slicing ops — fast (<1s per motif).
+
         sampled_np = np.empty((n_cells, n_iter), dtype=np.float32)
         for b in range(n_iter):
             sampled_np[:, b] = sum_columns(bg_for_motif[:, b])
@@ -572,11 +457,9 @@ def stage6_compute_deviations(data, min_peaks=5, device='cuda'):
         sum_exp_bg_np = expectation[bg_for_motif].sum(axis=0).astype(np.float32)  # (n_iter,)
         sum_exp_bg = torch.from_numpy(sum_exp_bg_np).to(dev)
         sampled_expected = cell_depth_t.unsqueeze(1) * sum_exp_bg.unsqueeze(0)
-        # (n_cells, n_iter)
 
         samp_dev = (sampled - sampled_expected) / sampled_expected.clamp(min=1e-10)
 
-        # ── Bias correction & Z ──
         mean_sd = samp_dev.mean(dim=1)
         std_sd  = samp_dev.std(dim=1)
 
@@ -594,7 +477,6 @@ def stage6_compute_deviations(data, min_peaks=5, device='cuda'):
         deviations[:, k] = normdev_np.astype(np.float32)
         z_scores[:, k]   = z_np.astype(np.float32)
 
-        # Progress every 25 motifs (this is slower than pure-GPU; more frequent reports)
         if (k + 1) % 25 == 0 or k == n_motifs - 1:
             elapsed = time.time() - t0
             rate = (k + 1) / elapsed
@@ -617,8 +499,6 @@ def stage6_compute_deviations(data, min_peaks=5, device='cuda'):
 # ═══════════════════════════════════════════════════════════════════════════
 # STAGE 7 — VARIABILITY & MOTIF FILTERING
 # ═══════════════════════════════════════════════════════════════════════════
-# R computeVariability: variability = sqrt( Var(Z) / expected_var_under_null )
-# We use the simpler std(Z) which is the common practice for DNN input.
 
 def stage7_variability(data, variability_cutoff=1.5, corr_cutoff=0.9):
     banner("STAGE 7 — VARIABILITY & FILTERING")
