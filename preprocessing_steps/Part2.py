@@ -1,7 +1,5 @@
+#!/usr/bin/env python3
 
-# ───────────────────────────────────────────────────────────────────────────
-# CUDA_VISIBLE_DEVICES fix (MUST come before torch import)
-# ───────────────────────────────────────────────────────────────────────────
 import os
 _cvd = os.environ.get('CUDA_VISIBLE_DEVICES', None)
 if _cvd is None or _cvd.strip() == '' or _cvd.strip().lower() == 'nodevfiles':
