@@ -2,8 +2,8 @@
 
 To reproduce the results, execute the scripts in the following order:
 
-1. **`Part1.py` (Current File) — ChromVAR Features Extraction**
-2. *[File 2 Name]* — *[Brief Description]*
+1. **`Part1.py`  ChromVAR Features Extraction**
+2. **`Part2.py`  ChromVAR GPU Pipeline**
 3. *[File 3 Name]* — *[Brief Description]*
 4. *[File 4 Name]* — *[Brief Description]*
 
@@ -66,5 +66,76 @@ python Part1.py --merge --n-chunks 4
 * `CHROMVAR_SUMMARY.txt`: Detailed log summary of the run execution.
 
 ---
---- 
-جاهز لتنظيم الملف الثاني أول ما تشاركيني تفاصيله أو ترفعيه!
+
+
+## 📄 2. Part-2
+
+### Overview
+
+`Part2.py`
+
+This script serves as a complete, paper-accurate implementation of the chromVAR pipeline (Schep et al., Nat Methods 2017), directly translated from the original R source code. It is heavily optimized via a hybrid architecture using **CPU-sparse data slicing and GPU-dense tensor arithmetic** to ensure high performance on large datasets without hitting RAM/VRAM bottlenecks.
+
+### Key Steps & Workflow
+
+The script handles data validation, extensive biological filtering, background matching, and execution across 9 discrete stages (Stages 0 to 8):
+
+* **Checkpoint Ingestion & Validation (Stage 0):** Automatically loads intermediate outputs (`step1_data`, `step4_sequences`, `step5_jaspar`, `step7_matrix`) from the previous script and ensures all peak and motif array dimensions match perfectly. It also computes or loads peak GC content percentages.
+
+
+* **Strict Sample & Feature Filtering (Stages 1-2):** Filters out low-quality cells based on a configurable minimum fragment depth threshold (default $\ge 1500$). It simultaneously drops empty peaks with no fragments or those with invalid GC content (failures where GC is exactly $0$ or $1$).
+
+
+* **Expectation Modeling (Stage 3):** Calculates the fraction of total expected reads mapped per peak, ensuring the cumulative baseline expectation sums to $1.0$.
+
+
+* **Mahalanobis Bias Binning (Stage 4):** Transforms peak GC metrics and $\log_{10}(\text{depth} + 1)$ values into a decorrelated Mahalanobis space, then projects them onto an even $50 \times 50$ spatial grid.
+
+
+* **GPU-Accelerated Background Sampling (Stage 5):** Leverages PyTorch multinomial sampling on the GPU to generate background peak indices across multiple iterations (default $50$ iterations), perfectly mimicking the exact random seed structure of the R implementation.
+
+
+* **Hybrid Deviation Arithmetic (Stage 6):** Combines efficient SciPy CSC column slicing on the CPU with dense vector operations on the GPU. It computes observed versus background deviations per cell and marks unreliable low-expectation inputs as `NaN` values.
+
+
+* **TF Variability & Redundancy Filtering (Stage 7):** Gauges transcription factor (TF) variability across cells, sorts the highest-variance TFs, performs a greedy correlation analysis to drop redundant motifs (correlation threshold $> 0.9$), and screens for high-variability motifs (variance threshold $> 1.5$).
+
+
+* **Consolidated Data Export (Stage 8):** Writes clean, standalone output matrices, background references, filtered sparse counts, full logs, and ready-to-train deep learning tensors to a dedicated final directory.
+
+
+
+### How to Run
+
+```bash
+python Part2.py
+
+```
+
+#### Customized Threshold Run (e.g., higher cell depth and custom iteration counts)
+
+```bash
+python Part2.py --min-depth 2000 --n-iter 50 --variability-cutoff 1.5 --corr-cutoff 0.9
+
+```
+
+### Main Outputs Generated
+
+All outputs are organized and stored inside a dedicated workspace (`/chromvar_final_gh38/`):
+
+* `X_dnn.npy` & `X_dnn.csv`: Final curated input tensor containing cells $\times$ highly variable, non-redundant motif Z-scores tailored for Deep Neural Network training.
+
+
+* `filtered_counts.npz` & `motif_matrix_filtered.npz`: Cleaned sparse SciPy arrays representing cell counts and motif mappings after rigorous peak-filtering.
+
+
+* `chromvar_deviations.npy` & `chromvar_zscores.npy`: Complete computed baseline matrices before downstream model-specific filtering.
+
+
+* `background_peaks.npy`: Main matrix containing sampled matching background peak groups.
+
+
+* `variability.csv`: Tabular breakdown summarizing individual motif IDs, names, metric variance scores, and inclusion status.
+
+
+* `pipeline_summary.txt`: A clean, human-readable execution summary recording dataset dimensions, parameter settings, filtering progress, and top-ranking variable elements.
