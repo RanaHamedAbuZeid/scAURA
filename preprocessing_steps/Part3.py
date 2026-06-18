@@ -1,29 +1,4 @@
 #!/usr/bin/env python3
-"""
-Final X_dnn builder for OOD detection model.
-
-Strategy: USE ALL MOTIFS, NO FILTERING
-───────────────────────────────────────
-Rationale:
-  1. For OOD detection, features distinguishing rare/novel cells cannot
-     be known a priori from in-distribution variability alone.
-  2. The deep learning model with proper regularization (dropout, L2)
-     handles 879 features without issues.
-  3. Post-hoc feature importance (SHAP, integrated gradients) gives a
-     more accurate picture of what the model uses than pre-filtering.
-  4. No arbitrary choices to defend in peer review — every JASPAR
-     vertebrate motif is included.
-
-Outputs:
-  X_dnn.npy          (n_cells, 879)   float32  — BIAS-CORRECTED DEVIATIONS
-  X_dnn_z.npy        (n_cells, 879)   float32  — Z-SCORES (alternative)
-  X_dnn.csv          with cell IDs × motif names
-  X_dnn_motifs.csv   ordered list of motifs (by JASPAR order)
-  variability.csv    variability stats (for reference, not for filtering)
-
-Usage:
-    python build_x_dnn_all.py
-"""
 
 import pickle
 from pathlib import Path
