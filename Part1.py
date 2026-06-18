@@ -1,17 +1,5 @@
 #!/usr/bin/env python3
-"""
-Complete ChromVAR Implementation - LOW RAM VERSION
-=====================================================
-Designed for 6 GB available RAM with 39K cells × 196K peaks.
 
-Key constraint:
-  Dense float64 matrix = 39441 × 196618 × 8 bytes ≈ 58 GB  → impossible
-  Sparse nnz only      = 343M  × 8 bytes           ≈  2.7 GB → fine
-
-Step 8 never calls .toarray() on the full matrix.
-All cell_total / peak_total / E computations use sparse operations.
-Background peak selection uses sparse column slicing only.
-"""
 
 import os
 import sys
@@ -161,7 +149,6 @@ def step3_download_genome():
     logger.info("STEP 3: DOWNLOADING GENOME REFERENCE (hg38)")
     logger.info("=" * 80)
 
-    # 1. تعديل اسم الملف المستهدف ليكون hg38
     genome_file = GENOME_DIR / "hg38.fa"
 
     if genome_file.exists():
@@ -170,7 +157,6 @@ def step3_download_genome():
         checkpoint_mgr.save(step_name, result)
         return result
 
-    # 2. تعديل الرسائل ورابط التحميل والملف المضغوط لـ hg38 الرسمي
     logger.info("Downloading hg38 genome (~3 GB) ...")
     genome_url = "https://hgdownload.soe.ucsc.edu/goldenPath/hg38/bigZips/hg38.fa.gz"
     gz_file    = GENOME_DIR / "hg38.fa.gz"
@@ -197,7 +183,6 @@ def step3_download_genome():
         logger.info(f"Download manually:\n  {genome_url}\n  → {GENOME_DIR}/\n  gunzip hg38.fa.gz")
         sys.exit(1)
 
-    # 3. تعديل القاموس المرتجع لتوثيق الإصدار الجديد hg38
     result = {'genome_file': str(genome_file), 'build': 'hg38'}
     checkpoint_mgr.save(step_name, result)
     return result
@@ -590,15 +575,6 @@ def step7_create_motif_matrix(peaks_df, jaspar_result, fimo_result):
 # ============================================================================
 # STEP 8: CHROMVAR DEVIATIONS — FULLY SPARSE, LOW RAM
 # ============================================================================
-#
-# Memory budget (6 GB available):
-#   counts sparse  ~2.7 GB  (343M nnz × float64)
-#   E vectors      computed on-the-fly per motif  → O(n_cells) only
-#   bg_devs        (n_cells × n_background) = 39441 × 50 × 8 ≈ 15 MB per motif
-#   output arrays  (n_cells × n_motifs) × float32 ≈ manageable
-#
-# We NEVER call counts.toarray() or build a full dense E matrix.
-# ============================================================================
 
 def step8_compute_chromvar(adata, peaks_df, motif_matrix_result,
                             n_background=50):
@@ -623,9 +599,7 @@ def step8_compute_chromvar(adata, peaks_df, motif_matrix_result,
     logger.info(f"Cells: {n_cells:,}  Peaks: {n_peaks:,}  Motifs: {n_motifs:,}")
     logger.info(f"counts_sp  RAM ≈ {counts_sp.data.nbytes / 1e9:.2f} GB")
 
-    # ── Sparse totals (never dense) ───────────────────────────────────────
-    # cell_totals : (n_cells,)   — sum over all peaks per cell
-    # peak_totals : (n_peaks,)   — sum over all cells per peak
+
     cell_totals  = np.asarray(counts_sp.sum(axis=1)).flatten()   # (n_cells,)
     peak_totals  = np.asarray(counts_sp.sum(axis=0)).flatten()   # (n_peaks,)
     total_counts = cell_totals.sum()
@@ -658,17 +632,13 @@ def step8_compute_chromvar(adata, peaks_df, motif_matrix_result,
             counts_sp[:, motif_cols].sum(axis=1)
         ).flatten()                                                # (n_cells,)
 
-        # ── Expected counts (paper formula) ──────────────────────────────
-        # E[i,j] = cell_total[i] * peak_total[j] / total_counts
-        # sum over motif peaks:
-        #   exp_k[i] = cell_total[i] * sum(peak_totals[motif_cols]) / total_counts
+
         sum_peak_totals_k = peak_totals[motif_cols].sum()
         exp_k   = cell_totals * (sum_peak_totals_k / total_counts)   # (n_cells,)
         denom_k = exp_k.sum() if exp_k.sum() > 0 else 1.0
 
         raw_dev_k = (obs_k - exp_k) / denom_k                       # (n_cells,)
 
-        # ── Background sampling ───────────────────────────────────────────
         motif_mask = np.zeros(n_peaks, dtype=bool)
         motif_mask[motif_cols] = True
 
