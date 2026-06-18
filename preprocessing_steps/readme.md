@@ -123,17 +123,7 @@ All outputs are organized and stored inside a dedicated workspace (`/chromvar_fi
 
 ---
 ---
-
-## 🛠️ Pipeline Execution Order
-
-To reproduce the results, execute the scripts in the following order:
-
-1. `chromvar_results_v4_1_cpu_fixed.py` — ChromVAR Features Extraction
-2. `Part2.py` — Paper-Accurate ChromVAR GPU Pipeline
-3. **`Part3.py` (Current File) — Final Feature Matrix Builder for OOD Detection**
-4. *[File 4 Name]* — *[Brief Description]*
-
----
+## 📄 3. Part-3
 
 ### Overview
 
@@ -176,6 +166,8 @@ All files are saved to the clean final output workspace (`/chromvar_final_gh38/`
 
 ---
 ---
+
+## 📄 4. Part-4
 
 ### Overview
 
