@@ -4,8 +4,8 @@ To reproduce the results, execute the scripts in the following order:
 
 1. **`Part1.py`  ChromVAR Features Extraction**
 2. **`Part2.py`  ChromVAR GPU Pipeline**
-3. **`Part3.py` Final Feature Matrix Builder for OOD Detection**
-4. **[File 4 Name]* — *[Brief Description]
+3. **`Part3.py`  Final Feature Matrix Builder for OOD Detection**
+4. **`Part4.py`  Data Splitting for Leave-One-Out OOD Detection**
 
 --- 
 ##  1. ChromVAR Feature Extraction Pipeline
@@ -154,7 +154,6 @@ The pipeline operates under a zero-filtering strategy optimized for deep learnin
 * **Reference Statistics Calculation**: Computes and ranks all motifs based on their standard deviation across cells for post-hoc reference and evaluation.
 
 
-
 ### How to Run
 
 Execute the script directly to process the tensors and write the downstream training assets:
@@ -178,4 +177,57 @@ All files are saved to the clean final output workspace (`/chromvar_final_gh38/`
 ---
 ---
 
-* `pipeline_summary.txt`: A clean, human-readable execution summary recording dataset dimensions, parameter settings, filtering progress, and top-ranking variable elements.
+### Overview
+
+`Part4.py`
+
+This script prepares the feature matrices for an **Out-of-Distribution (OOD) machine learning paradigm** using a Leave-One-Out strategy. It isolates one specific cell type to act as the unseen "alien" (OOD) class during testing, while partitioning the remaining cell types into stratified training, validation, and testing sets to serve as the In-Distribution (ID) data.
+
+### Key Steps & Workflow
+
+The partitioning process ensures zero data leakage and strict tracking across the following operations:
+
+* **OOD Target Isolation**: Extracts a designated cell type (default is `"Plasma cell"`) to serve as the OOD benchmark. Every single cell belonging to this class is withheld from the training and validation loops and sent straight to the final evaluation test split.
+* **Stratified ID Splitting**: Takes the remaining 13 In-Distribution cell types and splits them into **80% Train, 10% Validation, and 10% Test** sets. It uses stratified splitting (`sklearn.model_selection.train_test_split`) to ensure that the proportions of all 13 cell types remain identical across the train, validation, and ID-test sub-arrays.
+* **Dual-Feature Partitioning**: Splits both the primary bias-corrected deviations matrix (`X_dnn.npy`) and the alternative Z-score matrix (`X_dnn_z.npy`) using identical cell splits to maintain strict consistency for later comparisons.
+* **Label Integer Encoding**: Maps the 13 In-Distribution cell names to integers ranging from `0` to `12`. The hidden OOD class is automatically assigned a placeholder label of `-1`, preventing the classifier from learning its features while allowing proper benchmarking during OOD scoring.
+* **Sanity & Overlap Auditing**: Runs strict checks ensuring there is zero index overlap between the splits, and verifies that all original 39,349 cells are perfectly accounted for.
+
+### How to Run
+
+Execute the script directly to use the default target class, or use CLI flags to test different OOD simulation settings:
+
+#### Default Run (Isolates "Plasma cell" as OOD)
+
+```bash
+python Part4.py
+
+```
+
+#### Alternative OOD Target Run (e.g., setting Plasmacytoid Dendritic Cells "pDC" as OOD)
+
+```bash
+python Part4.py --ood "pDC"
+
+```
+
+#### Custom Splitting Ratios (e.g., 70% Train / 15% Val / 15% Test)
+
+```bash
+python Part4.py --train 0.70 --val 0.15 --test 0.15
+
+```
+
+### Main Outputs Generated
+
+All generated split assets are organized inside a clean dedicated directory (`/splits_fixed/`):
+
+* `X_train.npy` & `labels_train.npy`: Baseline training features (80% of ID data) and integer labels.
+* `X_val.npy` & `labels_val.npy`: Validation sets (10% of ID data) used for early stopping and hyperparameter tuning.
+* `X_test_id.npy` & `labels_test_id.npy`: Evaluation testing sets composed purely of known In-Distribution cell types.
+* `X_test_ood.npy` & `labels_test_ood.npy`: Evaluation testing sets composed *entirely* of the isolated OOD cell type (all labeled as `-1`).
+* `X_*_z.npy`: Identical Train/Val/Test data splits generated for the Z-score version of the feature matrices.
+* `label_encoder.npy`: Clean index dictionary mapping integer values back to their original cell type names.
+* `split_indices.npz` & `split_summary.txt`: Reproducibility mapping indexes and a comprehensive human-readable report summarizing the split numbers.
+
+---
