@@ -8,8 +8,7 @@ To reproduce the results, execute the scripts in the following order:
 4. **`Part4.py`  Data Splitting for Leave-One-Out OOD Detection**
 
 --- 
-##  1. ChromVAR Feature Extraction Pipeline
-
+## 📄 1. Part-1
 ### Overview
 
 First File summary: 
