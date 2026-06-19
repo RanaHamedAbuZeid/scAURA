@@ -13,6 +13,7 @@
 [![scikit-learn](https://img.shields.io/badge/scikit--learn-1.3%2B-F7931E?style=for-the-badge&logo=scikit-learn&logoColor=white)](https://scikit-learn.org)
 [![License: MIT](https://img.shields.io/badge/License-MIT-22C55E?style=for-the-badge)](LICENSE)
 
+
 <br>
 
 | Metric | Value |
@@ -178,30 +179,23 @@ scAURA/
 ---
 
 ## Installation
+### Dependencies & Tool Purposes
 
-```bash
-git clone https://github.com/your-username/scAURA.git
-cd scAURA
-pip install -r requirements.txt
-```
-
-**`requirements.txt`**
-```
-numpy
-pandas
-scipy
-torch>=2.0
-scikit-learn
-scanpy
-tqdm
-pyfaidx
-requests
-MOODS-python
-```
-
-> A **CUDA-capable GPU** is recommended for `part2.py` and `Model7_ensemble_.py`.  
-> Both scripts fall back to CPU automatically if no GPU is available.
-
+| Package | Purpose |
+| :--- | :--- |
+| **numpy** | Array operations, matrix math, file I/O (.npy) |
+| **pandas** | DataFrames, CSV export, peak/motif registries |
+| **scipy** | Sparse matrices (CSR / CSC) for chromatin data |
+| **torch** | WideNet model, GPU computation, OneCycleLR |
+| **scikit-learn** | Stratified splits, StandardScaler, classification metrics, NearestNeighbors |
+| **scanpy** | Load .h5ad AnnData files (PBMC atlas) |
+| **anndata** | AnnData object format — dependency of scanpy |
+| **pyfaidx** | Extract nucleotide sequences from hg38 FASTA genome |
+| **requests** | Download JASPAR 2024 CORE motif database |
+| **tqdm** | Progress bars for peak scanning and motif processing |
+| **matplotlib** | ROC curves, OOD score distributions, confusion matrix |
+| **seaborn** | Confusion matrix heatmap rendering |
+| **MOODS-python** | High-throughput TF binding site scanning (p-value ≤ 5×10⁻⁵) |
 ---
 
 ## Usage
