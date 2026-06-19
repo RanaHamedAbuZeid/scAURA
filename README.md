@@ -38,11 +38,11 @@ Rather than operating on the raw, dataset-specific peak matrix, scAURA uses **Ch
 
 **Key capabilities:**
 
-- ✅ Multi-class immune cell classification across 13 PBMC lineages
-- ✅ Out-of-distribution detection via 6 complementary uncertainty methods
-- ✅ Ensemble of 5 independent WideNet models for robust, calibrated predictions
-- ✅ Full reproducibility — fixed seeds, saved checkpoints, and split indices
-- ✅ End-to-end pipeline from raw `.h5ad` to trained model and OOD scores
+- Multi-class immune cell classification across 13 PBMC lineages
+- Out-of-distribution detection via 6 complementary uncertainty methods
+- Ensemble of 5 independent WideNet models for robust, calibrated predictions
+- Full reproducibility — fixed seeds, saved checkpoints, and split indices
+- End-to-end pipeline from raw `.h5ad` to trained model and OOD scores
 
 ---
 
