@@ -1,5 +1,8 @@
 <div align="center">
-
+<p align="center">
+  <img src="Logo.png" width="150">
+  <h1 align="center">scAURA</h1>
+</p>
 # scAURA
 <img src="Logo.png" alt="Model Architecture" width="300"/>
 
