@@ -177,31 +177,6 @@ python Part4.py --seed 42             # random seed (default)
 > OOD cells receive label `−1`. ID classes are encoded as integers `0–12`.
 
 ---
-
-## Output Directory Structure
-
-```
-pbmc_atlas/
-├── PBMC_atlas.h5ad                      ← input data
-├── checkpoints_v4_1_copy/               ← step checkpoints (part1.py)
-├── chromvar_results_v4_1_copy/          ← intermediate results (part1.py)
-├── genome_data_38/                      ← hg38 genome reference
-├── chromvar_final_gh38/                 ← final outputs (part2–3)
-│   ├── chromvar_deviations.npy
-│   ├── chromvar_zscores.npy
-│   ├── X_dnn.npy                        ← model input
-│   ├── X_dnn_z.npy
-│   ├── X_dnn_motifs.csv
-│   ├── variability.csv
-│   └── splits_fixed/                    ← train/val/test splits (part4)
-│       ├── X_train.npy
-│       ├── X_val.npy
-│       ├── X_test_id.npy
-│       ├── X_test_ood.npy
-│       └── ...
-└── logs/                                ← log files
-```
-
 ---
 
 ## Quick Reference
