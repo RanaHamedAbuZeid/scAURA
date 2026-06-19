@@ -797,31 +797,9 @@ def main():
         json.dump({'ood_detection': ood_results,
                    'ensemble_accuracy': float(ens_acc)}, f, indent=2, default=str)
 
-    # ── Verdict ───────────────────────────────────────────────────────
-    banner("VERDICT")
+# ── Verdict ───────────────────────────────────────────────────────
     best_method, best_res = max(ood_results.items(), key=lambda x: x[1]['auroc'])
-    log.info(f"  ensemble accuracy:   {ens_acc*100:.2f}% "
-             f"(vs 84.03% single, Δ={((ens_acc-0.8403)*100):+.2f}%)")
-    log.info(f"  best OOD method:     {best_method}")
-    log.info(f"  best OOD AUROC:      {best_res['auroc']:.4f} "
-             f"(vs 0.8297 single, Δ={((best_res['auroc']-0.8297)):+.4f})")
-    log.info("")
-    if best_res['auroc'] >= 0.90:
-        log.info("  ✅ STRONG OOD detection achieved (≥0.90)")
-        log.info("     → Stage F (Outlier Exposure) may not be needed.")
-    elif best_res['auroc'] >= 0.87:
-        log.info("  🟡 GOOD improvement; Stage F (OE) can push to 0.90+")
-    elif best_res['auroc'] > 0.84:
-        log.info("  ⚠  Modest improvement; Stage F (OE) is essential")
-    else:
-        log.info("  ❌ Ensemble didn't help — need architectural changes")
-
-    log.info("")
-    log.info("═" * 72)
-    log.info("STAGE E COMPLETE")
-    log.info("═" * 72)
     return 0
-
 
 if __name__ == "__main__":
     sys.exit(main())
