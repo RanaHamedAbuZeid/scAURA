@@ -308,22 +308,6 @@ All stochastic components use fixed seeds:
 cuDNN deterministic mode is enabled during training (`deterministic = True`, `benchmark = False`).
 
 ---
-
-## Citation
-
-If you use scAURA in your research, please cite:
-
-```bibtex
-@article{scAURA2025,
-  title   = {scAURA: Single-Cell ATAC-seq Unified Regulatory Analysis
-             for Immune Cell Classification and Out-of-Distribution Detection},
-  author  = {[Authors]},
-  journal = {[Journal]},
-  year    = {2025},
-  doi     = {[DOI]}
-}
-```
-
 ---
 
 <div align="center">
