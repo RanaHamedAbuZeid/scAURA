@@ -48,30 +48,7 @@ Rather than operating on the raw, dataset-specific peak matrix, scAURA uses **Ch
 ## Architecture
 
 scAURA is built on a **5-model deep ensemble** of WideNet feed-forward networks. Each model is trained independently from a different random seed, and their probability outputs are averaged at inference time.
-
-```
-Input: 879-dim ChromVAR TF motif deviation vector
-       │
-       ▼
-  ┌─────────────────────────────┐
-  │  Linear(879 → 1024)         │
-  │  BatchNorm  ·  ReLU         │
-  │  Dropout(p=0.4)             │
-  ├─────────────────────────────┤
-  │  Linear(1024 → 512)         │
-  │  BatchNorm  ·  ReLU         │
-  │  Dropout(p=0.4)             │
-  ├─────────────────────────────┤
-  │  Linear(512 → 256)          │  ← penultimate (feature) layer
-  │  BatchNorm  ·  ReLU         │
-  │  Dropout(p=0.4)             │
-  ├─────────────────────────────┤
-  │  Linear(256 → 13)           │  ← classification head
-  └─────────────────────────────┘
-       │
-       ▼
-  Softmax → cell-type probabilities
-```
+![Model Architecture](images/your_image_name.png)
 
 | Component | Detail |
 |-----------|--------|
