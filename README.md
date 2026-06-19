@@ -259,32 +259,6 @@ The script trains all 5 models sequentially, then runs full ensemble inference a
 
 ---
 
-## Output Files
-
-After a complete run, the following files are produced under `stage_e_model7_fixed/`:
-
-```
-stage_e_model7_fixed/
-├── model_1_widenet_seed42.pt          # model checkpoint + fitted scaler
-├── model_2_widenet_seed43.pt
-├── model_3_widenet_seed44.pt
-├── model_4_widenet_seed45.pt
-├── model_5_widenet_seed46.pt
-│
-├── ensemble_predictions.npz           # mean probabilities + stacked per-model probs
-├── mahalanobis_stats.npz              # class means + precision matrix (for scoring)
-├── ood_scores_full.csv                # per-cell OOD scores — all 6 methods
-│
-├── ensemble_classification_metrics.json
-├── ood_results.json
-├── per_class_metrics.csv
-├── confusion_matrix.csv
-│
-├── confusion_matrix.png
-├── ood_roc_curves.png
-└── ood_score_distributions.png
-```
-
 ---
 
 ## Reproducibility
@@ -305,6 +279,6 @@ cuDNN deterministic mode is enabled during training (`deterministic = True`, `be
 
 <div align="center">
 
-Made with ❤️ for the single-cell genomics community
+
 
 </div>
