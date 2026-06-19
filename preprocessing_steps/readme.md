@@ -18,7 +18,8 @@ The pipeline converts a raw scATAC-seq peak matrix into a TF motif deviation mat
 | **Cell types** | 14 annotated PBMC types stored in `obs['celltypes']` |
 | **OOD class** | Plasma cell (415 cells) — held out for OOD evaluation |
 
-> Important Note: Before running the pipeline, please open part1.py (and subsequent scripts) and update the hardcoded paths in the PATHS section to match your local machine's directory where the dataset is stored.
+> Important Note:
+>  Before running the pipeline, please open part1.py (and subsequent scripts) and update the hardcoded paths in the PATHS section to match your local machine's directory where the dataset is stored.
 
 ---
 
