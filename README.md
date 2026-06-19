@@ -179,24 +179,23 @@ scAURA/
 ---
 
 ## Installation
-### Dependencies & Tool Purposes
+### Environment Specifications
 
-| Package | Purpose |
-| :--- | :--- |
-| **numpy** | Array operations, matrix math, file I/O (.npy) |
-| **pandas** | DataFrames, CSV export, peak/motif registries |
-| **scipy** | Sparse matrices (CSR / CSC) for chromatin data |
-| **torch** | WideNet model, GPU computation, OneCycleLR |
-| **scikit-learn** | Stratified splits, StandardScaler, classification metrics, NearestNeighbors |
-| **scanpy** | Load .h5ad AnnData files (PBMC atlas) |
-| **anndata** | AnnData object format — dependency of scanpy |
-| **pyfaidx** | Extract nucleotide sequences from hg38 FASTA genome |
-| **requests** | Download JASPAR 2024 CORE motif database |
-| **tqdm** | Progress bars for peak scanning and motif processing |
-| **matplotlib** | ROC curves, OOD score distributions, confusion matrix |
-| **seaborn** | Confusion matrix heatmap rendering |
-| **MOODS-python** | High-throughput TF binding site scanning (p-value ≤ 5×10⁻⁵) |
----
+| Package | Installed Version | Minimum Required |
+| :--- | :--- | :--- |
+| **numpy** | 1.26.4 | 1.21.0 |
+| **pandas** | 2.3.3 | 1.3.0 |
+| **scipy** | 1.15.3 | 1.7.0 |
+| **torch** | 2.12.0.dev20260407 | - |
+| **scikit-learn** | 1.7.2 | 1.0.0 |
+| **scanpy** | 1.11.5 | 1.9.0 |
+| **anndata** | 0.11.4 | 0.9.0 |
+| **pyfaidx** | 0.9.0.3 | 0.7.0 |
+| **requests** | 2.32.5 | 2.26.0 |
+| **tqdm** | 4.67.1 | 4.60.0 |
+| **matplotlib** | 3.10.8 | 3.4.0 |
+| **seaborn** | 0.13.2 | 0.11.0 |
+| **MOODS-python** | Installed | 1.9.4 |
 
 ## Usage
 
