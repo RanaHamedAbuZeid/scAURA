@@ -163,27 +163,8 @@ python model/Model7_ensemble_.py \
     --patience     40          \
     --seeds  42 43 44 45 46
 ```
-
 The script trains all 5 models sequentially, then runs full ensemble inference and evaluates all 6 OOD detection methods automatically. Checkpoints, metrics, and figures are saved to `stage_e_model7_fixed/`.
 
----
-
----
-
-## Reproducibility
-
-All stochastic components use fixed seeds:
-
-| Component | Seed |
-|-----------|------|
-| Model training (5 runs) | 42, 43, 44, 45, 46 |
-| Background peak sampling (ChromVAR) | 2017 (matching the original R paper) |
-| Data splitting | 42 |
-| NumPy / PyTorch global seeds | 42 |
-
-cuDNN deterministic mode is enabled during training (`deterministic = True`, `benchmark = False`).
-
----
 ---
 
 <div align="center">
