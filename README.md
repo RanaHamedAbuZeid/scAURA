@@ -1,6 +1,8 @@
 <div align="center">
 
 # scAURA
+<img src="Logo.png" alt="Model Architecture" width="300"/>
+
 ### Single-Cell ATAC-seq Unified Regulatory Analysis
 
 *Cell-type annotation and out-of-distribution detection for scATAC-seq data*  
@@ -13,7 +15,6 @@
 [![scikit-learn](https://img.shields.io/badge/scikit--learn-1.3%2B-F7931E?style=for-the-badge&logo=scikit-learn&logoColor=white)](https://scikit-learn.org)
 [![License: MIT](https://img.shields.io/badge/License-MIT-22C55E?style=for-the-badge)](LICENSE)
 
-<img src="Logo.png" alt="Model Architecture" width="300"/>
 <br>
 
 | Metric | Value |
