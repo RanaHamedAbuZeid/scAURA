@@ -1,29 +1,4 @@
 #!/usr/bin/env python3
-"""
-Final X_dnn builder for OOD detection model.
-
-Strategy: USE ALL MOTIFS, NO FILTERING
-───────────────────────────────────────
-Rationale:
-  1. For OOD detection, features distinguishing rare/novel cells cannot
-     be known a priori from in-distribution variability alone.
-  2. The deep learning model with proper regularization (dropout, L2)
-     handles 879 features without issues.
-  3. Post-hoc feature importance (SHAP, integrated gradients) gives a
-     more accurate picture of what the model uses than pre-filtering.
-  4. No arbitrary choices to defend in peer review — every JASPAR
-     vertebrate motif is included.
-
-Outputs:
-  X_dnn.npy          (n_cells, 879)   float32  — BIAS-CORRECTED DEVIATIONS
-  X_dnn_z.npy        (n_cells, 879)   float32  — Z-SCORES (alternative)
-  X_dnn.csv          with cell IDs × motif names
-  X_dnn_motifs.csv   ordered list of motifs (by JASPAR order)
-  variability.csv    variability stats (for reference, not for filtering)
-
-Usage:
-    python build_x_dnn_all.py
-"""
 
 import pickle
 from pathlib import Path
@@ -67,12 +42,11 @@ def main():
     D_clean = np.nan_to_num(D, nan=0.0).astype(np.float32)
     Z_clean = np.nan_to_num(Z, nan=0.0).astype(np.float32)
 
-    # ── Compute variability (for reference only, NOT used for filtering) ──
     with np.errstate(invalid='ignore'):
         variability = np.nanstd(Z, axis=0)
     variability = np.nan_to_num(variability, nan=0.0)
 
-    # ── Immune TF sanity ──
+    
     known_immune = {
         'SPI1','SPIB','SPIC','CEBPA','CEBPB','CEBPD','CEBPE',
         'IRF1','IRF2','IRF3','IRF4','IRF5','IRF7','IRF8',
