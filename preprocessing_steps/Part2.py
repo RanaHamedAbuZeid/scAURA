@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
 
+# ───────────────────────────────────────────────────────────────────────────
+# CUDA_VISIBLE_DEVICES fix (MUST come before torch import)
+# ───────────────────────────────────────────────────────────────────────────
 import os
 _cvd = os.environ.get('CUDA_VISIBLE_DEVICES', None)
 if _cvd is None or _cvd.strip() == '' or _cvd.strip().lower() == 'nodevfiles':
@@ -404,7 +407,7 @@ def stage5_sample_background_peaks(data, n_iter=50, device='cuda'):
 #   normdev = observed_deviation - colMeans(sampled_deviation)
 #   z       = normdev / colStds(sampled_deviation)
 #
-# Also: threshold filter — if expected[i] < 1, z[i] and dev[i] := NaN
+# Also: threshold filter — if expected[i] < 1 ⇒ NaN
 
 def stage6_compute_deviations(data, min_peaks=5, device='cuda'):
     banner("STAGE 6 — COMPUTE DEVIATIONS (paper-exact, hybrid CPU-sparse + GPU-dense)")
@@ -567,13 +570,17 @@ def stage6_compute_deviations(data, min_peaks=5, device='cuda'):
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-# STAGE 7 — VARIABILITY & MOTIF FILTERING
+# STAGE 7 — VARIABILITY STATISTICS (reference only — no filtering)
 # ═══════════════════════════════════════════════════════════════════════════
-# R computeVariability: variability = sqrt( Var(Z) / expected_var_under_null )
-# We use the simpler std(Z) which is the common practice for DNN input.
+# Computes per-motif variability (std of Z across cells, ignoring NaN).
+# Result is saved in variability.csv for reference.
+#
+# NOTE: No motif filtering is applied here.
+#       Filtering decisions are deferred to part3.py which builds X_dnn
+#       using all 879 motifs (bias-corrected deviations).
 
-def stage7_variability(data, variability_cutoff=1.5, corr_cutoff=0.9):
-    banner("STAGE 7 — VARIABILITY & FILTERING")
+def stage7_variability(data):
+    banner("STAGE 7 — VARIABILITY STATISTICS (reference only)")
 
     Z = data['z_scores']    # (n_cells, n_motifs) may contain NaN
     n_motifs = Z.shape[1]
@@ -583,7 +590,7 @@ def stage7_variability(data, variability_cutoff=1.5, corr_cutoff=0.9):
         variability = np.nanstd(Z, axis=0)
     variability = np.nan_to_num(variability, nan=0.0)
 
-    log.info(f"  variability distribution:")
+    log.info(f"  variability distribution ({n_motifs} motifs):")
     log.info(f"    min={variability.min():.3f}  "
              f"median={np.median(variability):.3f}  "
              f"max={variability.max():.3f}")
@@ -599,39 +606,7 @@ def stage7_variability(data, variability_cutoff=1.5, corr_cutoff=0.9):
         log.info(f"    {rank:>4}  {data['motif_ids_all'][i]:15s}  "
                  f"{data['motif_names_all'][i]:20s}  {variability[i]:>8.3f}")
 
-    # Filter 1: correlation redundancy
-    Z_clean = np.nan_to_num(Z, nan=0.0)
-    Z_c = Z_clean - Z_clean.mean(axis=0)
-    norms = np.linalg.norm(Z_c, axis=0)
-    norms[norms == 0] = 1.0
-    Z_n = (Z_c / norms).astype(np.float32)
-
-    keep_corr = np.ones(n_motifs, dtype=bool)
-    log.info(f"\n  correlation filter (threshold = {corr_cutoff}) ...")
-    for i in range(n_motifs):
-        if not keep_corr[i]:
-            continue
-        # Correlate motif i with all subsequent motifs
-        c = Z_n.T[i+1:] @ Z_n[:, i]        # (n_motifs - i - 1,)
-        highly_corr = np.abs(c) > corr_cutoff
-        keep_corr[i+1:][highly_corr] = False
-
-    n_after_corr = int(keep_corr.sum())
-    log.info(f"    kept after corr filter: {n_after_corr} / {n_motifs}")
-
-    # Filter 2: variability
-    keep_var = variability > variability_cutoff
-    keep_final = keep_corr & keep_var
-    n_variable = int(keep_final.sum())
-    log.info(f"    kept after var > {variability_cutoff}: {n_variable}")
-
     data['variability'] = variability
-    data['keep_final']  = keep_final
-    data['X_dnn']       = Z_clean[:, keep_final].astype(np.float32)
-    data['variable_motif_ids']   = data['motif_ids_all'][keep_final]
-    data['variable_motif_names'] = data['motif_names_all'][keep_final]
-
-    log.info(f"  X_dnn shape: {data['X_dnn'].shape}")
     return data
 
 
@@ -666,20 +641,12 @@ def stage8_save(data, params):
     np.save(OUT_DIR / "chromvar_zscores.npy",    data['z_scores'])
     np.save(OUT_DIR / "motif_ids_tested.npy",    data['motif_ids_all'])
 
-    # ── Variability & DNN input ──
+    # ── Variability (reference only — X_dnn built by part3.py) ──
     pd.DataFrame({
-        'motif_id':     data['motif_ids_all'],
-        'motif_name':   data['motif_names_all'],
-        'variability':  data['variability'],
-        'kept_for_dnn': data['keep_final'],
+        'motif_id':   data['motif_ids_all'],
+        'motif_name': data['motif_names_all'],
+        'variability':data['variability'],
     }).to_csv(OUT_DIR / "variability.csv", index=False)
-
-    np.save(OUT_DIR / "X_dnn.npy", data['X_dnn'])
-    pd.DataFrame(
-        data['X_dnn'],
-        index=data['cell_ids'],
-        columns=data['variable_motif_names'],
-    ).to_csv(OUT_DIR / "X_dnn.csv")
 
     # ── Summary ──
     with open(OUT_DIR / "pipeline_summary.txt", 'w') as f:
@@ -701,19 +668,21 @@ def stage8_save(data, params):
         f.write(f"  Stage 4  Bias bins          : {data['n_bins']}x{data['n_bins']}\n")
         f.write(f"  Stage 5  Background peaks   : {data['background_peaks'].shape[1]} iter\n")
         f.write(f"  Stage 6  Deviations         : {data['deviations'].shape}\n")
-        f.write(f"  Stage 7  Variability filter : {data['X_dnn'].shape[1]} variable motifs\n")
+        f.write(f"  Stage 7  Variability stats  : "
+                f"{(data['variability'] > 1.5).sum()} motifs > 1.5  "
+                f"(reference only, no filtering)\n")
         f.write(f"  Stage 8  Save               : {OUT_DIR}\n\n")
 
-        f.write(f"DNN INPUT (X_dnn): {data['X_dnn'].shape}\n")
-        f.write(f"   cells × variable_motifs\n\n")
+        f.write(f"NOTE: X_dnn.npy / X_dnn.csv are NOT saved here.\n")
+        f.write(f"      Run part3.py to build X_dnn from all 879 motifs.\n\n")
 
         var = data['variability']
-        f.write(f"Deviation stats:\n")
+        f.write(f"Deviation stats (all motifs):\n")
         f.write(f"   min    : {np.nanmin(data['deviations']):.4f}\n")
         f.write(f"   max    : {np.nanmax(data['deviations']):.4f}\n")
         f.write(f"   median : {np.nanmedian(np.abs(data['deviations'])):.4f}\n\n")
 
-        f.write(f"Z-score stats:\n")
+        f.write(f"Z-score stats (all motifs):\n")
         f.write(f"   min    : {np.nanmin(data['z_scores']):.3f}\n")
         f.write(f"   max    : {np.nanmax(data['z_scores']):.3f}\n")
         f.write(f"   median : {np.nanmedian(np.abs(data['z_scores'])):.3f}\n\n")
@@ -726,6 +695,7 @@ def stage8_save(data, params):
 
     log.info(f"  ✓ all outputs in: {OUT_DIR}")
     log.info(f"  Summary: {OUT_DIR / 'pipeline_summary.txt'}")
+    log.info(f"  → Next step: run part3.py to build X_dnn.npy from all 879 motifs")
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -746,8 +716,6 @@ def main():
                         help='background iterations (default 50, paper)')
     parser.add_argument('--min-peaks', type=int, default=5,
                         help='skip motifs with fewer peaks')
-    parser.add_argument('--variability-cutoff', type=float, default=1.5)
-    parser.add_argument('--corr-cutoff', type=float, default=0.9)
     args = parser.parse_args()
 
     params = vars(args)
@@ -769,14 +737,13 @@ def main():
     data = stage4_build_bias_bins(data, n_bins=args.n_bins, w=args.w)
     data = stage5_sample_background_peaks(data, n_iter=args.n_iter)
     data = stage6_compute_deviations(data, min_peaks=args.min_peaks)
-    data = stage7_variability(data,
-                               variability_cutoff=args.variability_cutoff,
-                               corr_cutoff=args.corr_cutoff)
+    data = stage7_variability(data)
     stage8_save(data, params)
 
     total_time = time.time() - t_start
     log.info("")
     log.info(f"✅ Pipeline completed in {total_time/60:.1f} minutes")
+    log.info(f"   Next: python part3.py   (build X_dnn from all 879 motifs)")
 
 
 if __name__ == "__main__":
