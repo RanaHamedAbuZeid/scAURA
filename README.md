@@ -1,7 +1,7 @@
-<p align="center">
-  <img src="Logo.png" alt="scAURA" width="200"/>
-  <h1 align="center">scAURA</h1>
-</p>
+<div align="center">
+  <h1>scAURA</h1>
+  <img src="Logo.png" alt="scAURA" width="300"/>
+</div>
 
 
 ### Single-Cell ATAC-seq Unified Regulatory Analysis
