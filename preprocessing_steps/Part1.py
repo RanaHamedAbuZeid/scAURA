@@ -7,7 +7,6 @@ import pickle
 import logging
 import argparse
 import warnings
-from datetime import datetime
 from pathlib import Path
 
 import numpy as np
@@ -149,6 +148,7 @@ def step3_download_genome():
     logger.info("STEP 3: DOWNLOADING GENOME REFERENCE (hg38)")
     logger.info("=" * 80)
 
+    # 1. تعديل اسم الملف المستهدف ليكون hg38
     genome_file = GENOME_DIR / "hg38.fa"
 
     if genome_file.exists():
@@ -157,6 +157,7 @@ def step3_download_genome():
         checkpoint_mgr.save(step_name, result)
         return result
 
+    # 2. تعديل الرسائل ورابط التحميل والملف المضغوط لـ hg38 الرسمي
     logger.info("Downloading hg38 genome (~3 GB) ...")
     genome_url = "https://hgdownload.soe.ucsc.edu/goldenPath/hg38/bigZips/hg38.fa.gz"
     gz_file    = GENOME_DIR / "hg38.fa.gz"
@@ -183,6 +184,7 @@ def step3_download_genome():
         logger.info(f"Download manually:\n  {genome_url}\n  → {GENOME_DIR}/\n  gunzip hg38.fa.gz")
         sys.exit(1)
 
+    # 3. تعديل القاموس المرتجع لتوثيق الإصدار الجديد hg38
     result = {'genome_file': str(genome_file), 'build': 'hg38'}
     checkpoint_mgr.save(step_name, result)
     return result
@@ -523,7 +525,6 @@ def compute_gc(seq):
     seq = seq.upper()
     return (seq.count('G') + seq.count('C')) / len(seq)
 
-
 # ============================================================================
 # STEP 7: CREATE MOTIF-PEAK MATRIX  (vectorized)
 # ============================================================================
@@ -573,63 +574,11 @@ def step7_create_motif_matrix(peaks_df, jaspar_result, fimo_result):
     checkpoint_mgr.save(step_name, result)
     return result
 
-# ============================================================================
-# STEP: SAVE RESULTS
-# ============================================================================
 
-def step10_save_results(adata, chromvar_result, jaspar_result,
-                         fimo_result, variable_motifs_result):
-    step_name = "step10_saved"
-    if checkpoint_mgr.exists(step_name):
-        return
 
-    logger.info("=" * 80)
-    logger.info("STEP 10: SAVING RESULTS")
-    logger.info("=" * 80)
 
-    X_dnn       = variable_motifs_result['X_dnn']
-    motif_names = variable_motifs_result['motif_names_variable']
-    variability = variable_motifs_result['variability']
-    motifs_df   = jaspar_result['motifs_df']
 
-    np.save(RESULTS_DIR / "chromvar_deviations.npy", chromvar_result['deviations'])
-    np.save(RESULTS_DIR / "chromvar_zscores.npy",    chromvar_result['z_scores'])
-    np.save(RESULTS_DIR / "X_dnn.npy",               X_dnn)
 
-    pd.DataFrame(X_dnn, index=adata.obs_names, columns=motif_names
-                 ).to_csv(RESULTS_DIR / "X_dnn.csv")
-
-    pd.DataFrame({
-        'motif_name':   motifs_df['motif_name'].values,
-        'motif_id':     motifs_df['motif_id'].values,
-        'variability':  variability,
-        'kept_for_dnn': variable_motifs_result['variable_mask']
-    }).to_csv(RESULTS_DIR / "motif_variability.csv", index=False)
-
-    adata.obs.to_csv(RESULTS_DIR / "cell_metadata.csv")
-
-    with open(RESULTS_DIR / "CHROMVAR_SUMMARY.txt", 'w') as f:
-        f.write("=" * 80 + "\n")
-        f.write("CHROMVAR RESULTS\n")
-        f.write("=" * 80 + "\n\n")
-        f.write(f"Date                 : {datetime.now()}\n\n")
-        f.write(f"Cells                : {adata.n_obs:,}\n")
-        f.write(f"Peaks                : {adata.n_vars:,}\n")
-        f.write(f"Total motifs scanned : {len(variability)}\n")
-        f.write(f"Motif matches        : {fimo_result['n_matches']:,}\n")
-        f.write(f"Scanning method      : {fimo_result['method']}\n\n")
-        f.write(f"Variability threshold: {variable_motifs_result['threshold_used']}\n")
-        f.write(f"Variable motifs kept : {variable_motifs_result['variable_mask'].sum()}\n\n")
-        f.write(f"DNN input shape      : {X_dnn.shape}\n\n")
-        f.write("Output files:\n")
-        f.write("  X_dnn.npy / X_dnn.csv\n")
-        f.write("  chromvar_deviations.npy\n")
-        f.write("  chromvar_zscores.npy\n")
-        f.write("  motif_variability.csv\n")
-        f.write("  cell_metadata.csv\n")
-
-    logger.info(f"✅ Saved to: {RESULTS_DIR}/")
-    checkpoint_mgr.save(step_name, True)
 
 # ============================================================================
 # MAIN
@@ -641,7 +590,7 @@ def main():
                         help='Run single MOODS chunk (0-based)')
     parser.add_argument('--chunk-size', type=int,  default=50000)
     parser.add_argument('--merge',      action='store_true',
-                        help='Merge chunks + run steps 7-10')
+                        help='Merge chunks + run step 7')
     parser.add_argument('--n-chunks',   type=int,  default=4)
     args = parser.parse_args()
 
@@ -670,8 +619,8 @@ def main():
         # ── Default: run everything in one shot (24-hour job) ─────────────
         fimo_result = step6_run_full(sequences_result, jaspar_result)
 
-    motif_matrix    = step7_create_motif_matrix(peaks_df, jaspar_result, fimo_result)
-
+    motif_matrix = step7_create_motif_matrix(peaks_df, jaspar_result, fimo_result)
+    logger.info("✅ Pipeline complete — steps 1-7 finished successfully")
     return 0
 
 
