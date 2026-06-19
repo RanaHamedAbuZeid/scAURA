@@ -49,7 +49,10 @@ Rather than operating on the raw, dataset-specific peak matrix, scAURA uses **Ch
 ## Architecture
 
 scAURA is built on a **5-model deep ensemble** of WideNet feed-forward networks. Each model is trained independently from a different random seed, and their probability outputs are averaged at inference time.
-![Model Architecture](images/your_image_name.png)
+
+<center>
+  <img src="Model_Arch.png" alt="Model Architecture" width="300"/>
+</center>
 
 | Component | Detail |
 |-----------|--------|
