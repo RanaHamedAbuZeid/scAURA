@@ -55,19 +55,6 @@ scAURA is built on a **5-model deep ensemble** of WideNet feed-forward networks.
   <img src="Model_Arch.png" alt="Model Architecture" width="100%">
 </p>
 
-
-
-| Component | Detail |
-|-----------|--------|
-| Parameters per model | 1,564,173 |
-| Total parameters (ensemble) | 7,820,865 |
-| Ensemble size | 5 models (seeds 42 – 46) |
-| Loss function | Label-smoothing cross-entropy (ε = 0.1) + class weighting |
-| Optimizer | AdamW (lr = 1e-3, weight decay = 5e-5) |
-| Scheduler | OneCycleLR (per-batch, cosine annealing) |
-| Regularization | Dropout (p = 0.4) · MixUp (α = 0.2) · Gradient clipping (norm = 1.0) |
-| Early stopping | Patience = 40 epochs · Max 150 epochs |
-
 ---
 
 ## Results
@@ -81,48 +68,6 @@ scAURA is built on a **5-model deep ensemble** of WideNet feed-forward networks.
 | **Macro F1** | **86.22%** |
 | **Weighted F1** | **87.60%** |
 | **Cohen's κ** | **0.8606** |
-
-### Per-class Performance
-
-| Cell Type | N | Precision | Recall | F1 |
-|-----------|---|-----------|--------|----|
-| Monocyte | 779 | 0.9961 | 0.9769 | **0.9864** |
-| Naive B | 326 | 0.9493 | 0.9755 | **0.9622** |
-| pDC | 11 | 1.0000 | 0.9091 | **0.9524** |
-| NK | 285 | 0.9375 | 0.9474 | **0.9424** |
-| Treg | 291 | 0.9161 | 0.9003 | **0.9081** |
-| Memory B | 143 | 0.9333 | 0.8811 | **0.9065** |
-| cDC | 27 | 0.8125 | 0.9630 | **0.8814** |
-| Effector Memory CD8 T | 273 | 0.8169 | 0.8498 | **0.8330** |
-| Memory CD4 T | 669 | 0.8281 | 0.8640 | **0.8456** |
-| MAIT | 88 | 0.8372 | 0.8182 | **0.8276** |
-| Naive CD4 T | 503 | 0.8157 | 0.8449 | **0.8301** |
-| Naive CD8 T | 335 | 0.7522 | 0.7701 | **0.7611** |
-| Central Memory CD8 T | 164 | 0.7054 | 0.4817 | **0.5725** |
-
-### OOD Detection — Plasma Cells vs 13 ID Types
-
-Six uncertainty estimators are evaluated simultaneously. Penultimate-layer features are used for geometry-based scoring (Mahalanobis, KNN).
-
-| Method | AUROC | AUPR-OUT | FPR@95 TPR |
-|--------|-------|----------|-----------|
-| **KNN Distance** | **0.8787** | **0.4853** | 0.4964 |
-| Mahalanobis | 0.8643 | 0.3438 | 0.4556 |
-| MSP Ensemble | 0.8590 | 0.3829 | **0.3901** |
-| Energy Score | 0.8314 | 0.3597 | 0.6328 |
-| Ensemble Variance | 0.7589 | 0.1665 | 0.4605 |
-| MC Dropout Variance | 0.7174 | 0.1440 | 0.4854 |
-
-### Ensemble vs Individual Models
-
-| Model | Seed | Best Epoch | Val Acc | Test Acc |
-|-------|------|-----------|---------|----------|
-| M1 | 42 | 126 | 88.59% | 86.95% |
-| M2 | 43 | 85 | 88.75% | 86.80% |
-| M3 | 44 | 62 | 88.90% | 86.80% |
-| M4 | 45 | 42 | 88.54% | 87.06% |
-| M5 | 46 | 61 | 88.24% | 87.31% |
-| **Ensemble** | — | — | — | **87.75% (+0.44%)** |
 
 ---
 
@@ -139,26 +84,6 @@ scAURA was developed and evaluated on the **healthy adult human PBMC scATAC-seq 
 | **Total** | **39,349** | |
 
 Each cell is represented by an **879-dimensional vector** of ChromVAR bias-corrected TF motif deviation scores, derived from the [JASPAR 2024 CORE vertebrates](https://jaspar.elixir.no) non-redundant database.
-
----
-
-## Repository Structure
-
-```
-scAURA/
-│
-├── preprocessing/
-│   ├── part1.py             # Steps 1–7: peaks, genome download, MOODS scanning
-│   ├── part2.py             # ChromVAR bias-corrected deviation computation
-│   ├── Part3.py             # Final feature matrix (X_dnn.npy — 879 motifs)
-│   └── Part4.py             # Train / val / test / OOD data splitting
-│
-├── model/
-│   └── Model7_ensemble_.py  # 5-WideNet ensemble: training + OOD evaluation
-│
-├── README.md
-└── requirements.txt
-```
 
 ---
 
