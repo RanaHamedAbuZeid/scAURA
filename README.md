@@ -19,12 +19,12 @@
 
 | Metric | Value |
 |--------|-------|
-| 🎯 Ensemble Accuracy | **87.75%** |
-| ⚖️ Balanced Accuracy | **86.02%** |
-| 📐 Macro F1 | **86.22%** |
-| 🔍 Best OOD AUROC | **0.8787** (KNN) |
-| 🧬 Cell Types | **13 PBMC lineages** |
-| ⏱️ Training Time | **23.1 min** (5 models, GPU) |
+|  Ensemble Accuracy | **87.75%** |
+|  Balanced Accuracy | **86.02%** |
+|  Macro F1 | **86.22%** |
+|  Best OOD AUROC | **0.8787** (KNN) |
+|  Cell Types | **13 PBMC lineages** |
+|  Training Time | **23.1 min** (5 models, GPU) |
 
 </div>
 
