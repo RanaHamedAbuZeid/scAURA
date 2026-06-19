@@ -1,41 +1,5 @@
 #!/usr/bin/env python3
-"""
-═══════════════════════════════════════════════════════════════════════════
-STAGE A — DATA SPLITTING FOR LEAVE-ONE-OUT OOD DETECTION
-═══════════════════════════════════════════════════════════════════════════
 
-Configuration
-─────────────
-  OOD target class : "Plasma cell" (415 cells)
-  ID classes       : 13 remaining cell types (38,934 cells)
-  Split ratios     : 80 / 10 / 10  (train / val / test)
-  Random seed      : 42
-  Stratification   : by celltype within ID data
-
-Inputs
-──────
-  X_dnn.npy                           — (39349, 879) bias-corrected deviations
-  X_dnn_z.npy                         — (39349, 879) z-scores (also split for later comparison)
-  cell_ids_kept.npy                   — (39349,) cell identifiers
-  step1_data.pkl                      — AnnData with obs['celltypes'] labels
-
-Outputs (in OUT_DIR / 'splits/')
-───────
-  splits/X_train.npy      labels_train.npy       cell_ids_train.npy
-  splits/X_val.npy        labels_val.npy         cell_ids_val.npy
-  splits/X_test_id.npy    labels_test_id.npy     cell_ids_test_id.npy
-  splits/X_test_ood.npy   labels_test_ood.npy    cell_ids_test_ood.npy
-  splits/X_train_z.npy  ...  (same 4 splits for z-scores)
-  splits/label_encoder.npy            — mapping: integer → cell type name
-  splits/split_summary.txt            — human-readable report
-  splits/split_indices.npz            — row indices into original X_dnn
-
-Usage
-─────
-  python stage_a_split_data.py
-  python stage_a_split_data.py --ood "pDC"       # different OOD class
-  python stage_a_split_data.py --train 0.70 --val 0.15 --test 0.15
-"""
 
 import argparse
 import pickle
