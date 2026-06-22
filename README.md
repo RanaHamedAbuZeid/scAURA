@@ -57,15 +57,8 @@ scAURA is built on a **5-model deep ensemble** of WideNet feed-forward networks.
 | **Macro F1** | **86.22%** |
 | **Weighted F1** | **87.60%** |
 | **Cohen's κ** | **0.8606** |
-
-
-| Metric | Value |
-|--------|-------|
-|  Ensemble Accuracy | **87.75%** |
-|  Balanced Accuracy | **86.02%** |
-|  Macro F1 | **86.22%** |
-|  Best OOD AUROC | **0.8787** (KNN) |
-|  Cell Types | **13 PBMC lineages** |
+| **Best OOD AUROC** | **0.8787** (KNN) |
+| **Cell Types** | **13 PBMC lineages** |
 
 
 
