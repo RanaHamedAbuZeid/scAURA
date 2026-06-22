@@ -16,17 +16,6 @@
 [![scikit-learn](https://img.shields.io/badge/scikit--learn-1.3%2B-F7931E?style=for-the-badge&logo=scikit-learn&logoColor=white)](https://scikit-learn.org)
 [![License: MIT](https://img.shields.io/badge/License-MIT-22C55E?style=for-the-badge)](LICENSE)
 
-<br>
-
-| Metric | Value |
-|--------|-------|
-|  Ensemble Accuracy | **87.75%** |
-|  Balanced Accuracy | **86.02%** |
-|  Macro F1 | **86.22%** |
-|  Best OOD AUROC | **0.8787** (KNN) |
-|  Cell Types | **13 PBMC lineages** |
-
-</div>
 
 ---
 
@@ -68,6 +57,17 @@ scAURA is built on a **5-model deep ensemble** of WideNet feed-forward networks.
 | **Macro F1** | **86.22%** |
 | **Weighted F1** | **87.60%** |
 | **Cohen's κ** | **0.8606** |
+
+
+| Metric | Value |
+|--------|-------|
+|  Ensemble Accuracy | **87.75%** |
+|  Balanced Accuracy | **86.02%** |
+|  Macro F1 | **86.22%** |
+|  Best OOD AUROC | **0.8787** (KNN) |
+|  Cell Types | **13 PBMC lineages** |
+
+
 
 ---
 
