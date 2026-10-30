@@ -41,7 +41,7 @@ scAURA is built on a **5-model deep ensemble** of WideNet feed-forward networks.
 
 
 <p align="center">
-  <img src="Model_Arch.png" alt="Model Architecture" width="100%">
+  <img src="ModellArch.png" alt="Model Architecture" width="100%">
 </p>
 
 ---
